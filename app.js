@@ -4,6 +4,8 @@ import {
   uid,
   initialState,
   exercises,
+  sessionPlan,
+  plannedSets,
   stats,
   weightProgress,
   weightInsight,
@@ -96,15 +98,7 @@ function profileForm() {
       ["consistent", "Stay consistent"],
     ],
     p.goal,
-  )}<div class="two">${num("start", "Starting weight (lb)", p.start, 50, 1000, 0.1)}${num("target", "Target weight (lb)", p.target, 50, 1000, 0.1)}</div><p class="muted">Weight is one measure. Track your strength and optional waist measurements, too. For weight maintenance, use the same starting and target weight.</p><div class="two">${num("weekly", "Sessions per week", p.weekly, 1, 6)}${select(
-    "minutes",
-    "Session length",
-    [
-      [15, "15 minutes"],
-      [35, "35 minutes"],
-    ],
-    p.minutes,
-  )}</div><fieldset style="border:0;padding:0;margin:0"><legend class="muted">Preferred training days</legend><div class="checks gap-sm">${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => `<label class="check"><input name="days" type="checkbox" value="${i}" ${p.days.includes(i) ? "checked" : ""}>${d}</label>`).join("")}</div></fieldset>${select(
+  )}<div class="two">${num("start", "Starting weight (lb)", p.start, 50, 1000, 0.1)}${num("target", "Target weight (lb)", p.target, 50, 1000, 0.1)}</div><p class="muted">Weight is one measure. Track your strength and optional waist measurements, too. For weight maintenance, use the same starting and target weight.</p><div class="two">${num("weekly", "Sessions per week", p.weekly, 1, 6)}${num("minutes", "Session length (15–90 minutes)", p.minutes, 15, 90)}</div><fieldset style="border:0;padding:0;margin:0"><legend class="muted">Preferred training days</legend><div class="checks gap-sm">${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => `<label class="check"><input name="days" type="checkbox" value="${i}" ${p.days.includes(i) ? "checked" : ""}>${d}</label>`).join("")}</div></fieldset>${select(
     "experience",
     "Experience",
     [
@@ -167,7 +161,7 @@ function recoveryCard() {
   return `<section class="card"><span class="badge">RECOVERY CHECK</span><h3 class="gap">Give yourself some room.</h3><p class="muted gap-sm">Your latest check-in reports low energy or fatigue. Consider a shorter session or rest today. Stop any movement that causes pain.</p><div class="gap">${button("Choose the shorter session", "short", "ghost wide")}</div></section>`;
 }
 function today() {
-  return `<div class="eyebrow">Your next chapter</div><h1 class="gap-sm">${esc(state.profile.name)}.<br>You've got this.</h1><div class="layout"><div class="stack">${goalCard()}<section class="card mission"><span class="number">01</span><div><span class="eyebrow">Today's mission</span><h2>Build your<br>base.</h2><p>${state.profile.minutes} min · Full body · 3 movements</p></div><div class="gap">${button(state.active ? "RESUME WORKOUT" : "START WORKOUT", "start", "primary wide")}<div class="gap-sm">${button("Just get me started · 15 min", "short", "ghost wide")}</div></div></section>${button("Log walking, cycling or swimming", "cardio", "ghost wide")}</div><div class="stack">${weekCard()}${recoveryCard()}<section class="card"><div class="eyebrow">Weekly check-in</div><h2 class="gap-sm">Check in.<br>Move forward.</h2><p class="muted gap-sm">${state.checks.length ? `Last weigh-in: ${dateLabel(state.checks.at(-1).date)}` : "Your first weigh-in starts the trend."}</p><div class="gap">${button("LOG WEIGH-IN", "checkin", "primary wide")}</div></section>${recommendationCards()}<p class="muted"><small>Starter workouts are general templates. Adjust exercises to your equipment and comfort.</small></p></div></div>`;
+  return `<div class="eyebrow">Your next chapter</div><h1 class="gap-sm">${esc(state.profile.name)}.<br>You've got this.</h1><div class="layout"><div class="stack">${goalCard()}<section class="card mission"><span class="number">01</span><div><span class="eyebrow">Today's mission</span><h2>Build your<br>base.</h2><p>${state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes} min budget · Full body · 3 movements</p><p class="gap-sm">${planDescription(state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes)}</p></div><div class="gap">${button(state.active ? "RESUME WORKOUT" : "START WORKOUT", "start", "primary wide")}<div class="gap-sm">${button("Just get me started · 15 min", "short", "ghost wide")}</div></div></section>${button("Log walking, cycling or swimming", "cardio", "ghost wide")}</div><div class="stack">${weekCard()}${recoveryCard()}<section class="card"><div class="eyebrow">Weekly check-in</div><h2 class="gap-sm">Check in.<br>Move forward.</h2><p class="muted gap-sm">${state.checks.length ? `Last weigh-in: ${dateLabel(state.checks.at(-1).date)}` : "Your first weigh-in starts the trend."}</p><div class="gap">${button("LOG WEIGH-IN", "checkin", "primary wide")}</div></section>${recommendationCards()}<p class="muted"><small>Starter workouts are general templates. Adjust exercises to your equipment and comfort.</small></p></div></div>`;
 }
 function recommendationCards() {
   return recommendations(state)
@@ -201,20 +195,53 @@ function checkinForm() {
     )}</div><div><label for="waist">Waist (inches, optional)</label><input name="waist" id="waist" type="number" min="10" max="100" step=".1" value="${existing?.waist ?? ""}"></div><div><label for="notes">Nutrition / recovery notes (optional)</label><textarea name="notes" id="notes" maxlength="1000" placeholder="Anything that affected this week?">${esc(existing?.notes ?? "")}</textarea></div><p class="muted">Weigh under similar conditions each week. Saving the same date updates that entry.</p><button class="primary wide">SAVE CHECK-IN</button></form>`,
   );
 }
+function planDescription(minutes) {
+  const p = sessionPlan(minutes);
+  return `${p.warmup} min warm-up · ${p.strength} min strength/rest · ${p.cardio ? p.cardio + " min optional easy cardio · " : ""}${p.cooldown} min cool-down`;
+}
+const alternativeSteps = {
+  squat: [
+    "Use a sturdy chair that will not slide. Place your feet firmly on the floor.",
+    "Lean forward slightly and use your hands on your thighs for support if needed.",
+    "Stand smoothly, then lower yourself to the seat with control.",
+  ],
+  row: [
+    "Secure the band to a suitable anchor at lower-chest height and check it before use.",
+    "Sit tall with your feet planted. Draw your elbows back toward your sides.",
+    "Keep your torso steady and allow the band to return with control.",
+  ],
+  press: [
+    "Stand facing a wall and place your palms on it at chest height.",
+    "Keep your body aligned as you bend your elbows and lean toward the wall.",
+    "Press away smoothly. Move your feet closer to the wall to make it easier.",
+  ],
+};
+function demo(ex, alt) {
+  const key = ex.id + (alt ? "-alt" : "");
+  return `<div class="exercise-demo"><div class="row"><span class="eyebrow">WATCH THE MOVEMENT</span><span class="badge">6 SEC LOOP</span></div><video class="demo-video gap-sm" data-demo muted loop playsinline controls preload="metadata" poster="assets/demos/${key}.png" aria-label="${esc(alt || ex.name)} animated demonstration"><source src="assets/demos/${key}.mp4" type="video/mp4">Your browser cannot play this video. Follow the setup instructions below.</video><div class="row gap-sm wrap">${button("Play / pause demo", "toggle-demo", "ghost")}${select(
+    "demo-speed",
+    "Playback speed",
+    [
+      [1, "Normal"],
+      [0.5, "Half speed"],
+    ],
+    1,
+  )}</div><small>Original simplified animation · tap play to repeat the movement. This shows the exercise, not an analysis of your form.</small></div>`;
+}
 function workout() {
   const a = state.active;
   if (!a)
     return `<h1>Ready when<br>you are.</h1><div class="gap">${button("START WORKOUT", "start", "primary")}</div>`;
   const ex = exercises[a.index],
     sets = a.sets.filter((x) => x.exercise === ex.id),
-    target = a.short ? 1 : ex.sets,
+    target = plannedSets(a),
     last = state.sessions
       .flatMap((w) => w.sets)
       .filter((x) => x.exercise === ex.id)
       .at(-1),
     reps = state.targets[ex.id]?.reps ?? ex.reps,
     variant = a.variants[ex.id] ?? ex.name;
-  return `<div class="row wrap"><span class="eyebrow">Movement ${a.index + 1} of ${exercises.length}</span>${button("Save & exit", "save-exit", "ghost")}</div><h1 class="exercisehead">${esc(variant)}</h1><p class="muted">${esc(ex.equipment)} · ${target} sets × ${reps} reps</p><div class="layout"><section class="card"><div class="row"><span class="badge">YOUR NEXT SET</span><span class="muted timer" id="rest"></span></div><div class="sets">${Array.from({ length: target }, (_, i) => `<span class="set ${i < sets.length ? "done" : i === sets.length ? "current" : ""}">${i < sets.length ? "✓" : i + 1}</span>`).join("")}</div><p class="notice">${esc(variant === ex.name ? ex.cue : "Use a comfortable range and controlled movement. Ask a trainer to check your setup for this alternative.")}</p><form id="set" class="fields gap"><div class="two">${num("load", "Weight (lb; 0 = bodyweight)", sets.at(-1)?.weight ?? last?.weight ?? "", 0, 1500, 0.5)}${num("reps", "Reps completed", reps, 1, 100)}</div>${select(
+  return `<div class="row wrap"><span class="eyebrow">Movement ${a.index + 1} of ${exercises.length}</span>${button("Save & exit", "save-exit", "ghost")}</div><h1 class="exercisehead">${esc(variant)}</h1><p class="muted">${esc(a.variants[ex.id] ? {squat:"Bodyweight · sturdy chair",row:"Resistance band · secure anchor",press:"Bodyweight · wall"}[ex.id] : ex.equipment)} · ${target} sets × ${reps} reps</p><p class="muted gap-sm">${planDescription(a.minutes ?? (a.short ? 15 : 35))}</p><div class="layout"><section class="card">${demo(ex, a.variants[ex.id])}<div class="row gap"><span class="badge">YOUR NEXT SET</span><span class="muted timer" id="rest"></span></div><div class="sets">${Array.from({ length: target }, (_, i) => `<span class="set ${i < sets.length ? "done" : i === sets.length ? "current" : ""}">${i < sets.length ? "✓" : i + 1}</span>`).join("")}</div><p class="notice">${esc(variant === ex.name ? ex.cue : "Use a comfortable range and controlled movement. Ask a trainer to check your setup for this alternative.")}</p><form id="set" class="fields gap"><div class="two">${num("load", "Weight (lb; 0 = bodyweight)", sets.at(-1)?.weight ?? last?.weight ?? "", 0, 1500, 0.5)}${num("reps", "Reps completed", reps, 1, 100)}</div>${select(
     "rir",
     "How many more reps could you do?",
     [
@@ -232,7 +259,7 @@ function workout() {
       ["yes", "Yes — stop this movement"],
     ],
     "no",
-  )}<small>${last ? `Last logged: ${last.weight} lb × ${last.reps}.` : "No previous load. Choose a comfortable starting weight."} Weight means the machine setting or total external load; use the same convention each session.</small><button class="primary wide">COMPLETE SET</button></form><div class="row gap wrap">${button("Swap exercise", "swap", "ghost")}${button("Skip movement", "skip", "ghost")}</div><div class="gap">${button("Finish session early", "finish", "textbutton")}</div></section><div class="stack"><section class="card"><h3>Set up your movement</h3><ol class="list gap">${ex.steps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol><small>Instructions describe the original exercise. No instructional video is supplied in this version.</small></section><section class="card"><h3>Record your set</h3><p class="muted gap-sm">Film a short set with your whole body and equipment visible. Keep other gym members out of frame.</p>${videoInputs(a.id, ex.id)}<p class="notice gap">Save, replay and add your own notes. Automatic form analysis is not connected.</p></section>${videoList(videos.filter((v) => v.session === a.id && v.exercise === ex.id))}</div></div>`;
+  )}<small>${last ? `Last logged: ${last.weight} lb × ${last.reps}.` : "No previous load. Choose a comfortable starting weight."} Weight means the machine setting or total external load; use the same convention each session.</small><button class="primary wide">COMPLETE SET</button></form><div class="row gap wrap">${button("Swap exercise", "swap", "ghost")}${button("Skip movement", "skip", "ghost")}</div><div class="gap">${button("Finish session early", "finish", "textbutton")}</div></section><div class="stack"><section class="card"><h3>Set up your movement</h3><ol class="list gap">${(a.variants[ex.id] ? alternativeSteps[ex.id] : ex.steps).map((s) => `<li>${esc(s)}</li>`).join("")}</ol><small>Demonstrations are simplified movement guides. Use a comfortable range; equipment setups vary.</small></section><section class="card"><h3>Record your set</h3><p class="muted gap-sm">Film a short set with your whole body and equipment visible. Keep other gym members out of frame.</p>${videoInputs(a.id, ex.id)}<p class="notice gap">Save, replay and add your own notes. Automatic form analysis is not connected.</p></section>${videoList(videos.filter((v) => v.session === a.id && v.exercise === ex.id))}</div></div>`;
 }
 function videoInputs(session, exercise) {
   return `<div class="videoactions gap">${button("Record set", "record", "ghost", `data-session="${esc(session)}" data-exercise="${esc(exercise)}"`)}${button("Upload video", "upload", "ghost", `data-session="${esc(session)}" data-exercise="${esc(exercise)}"`)}</div><input type="file" class="hidden" id="video-record" accept="video/*" capture="environment" data-session="${esc(session)}" data-exercise="${esc(exercise)}"><input type="file" class="hidden" id="video-upload" accept="video/*" data-session="${esc(session)}" data-exercise="${esc(exercise)}"><small>Up to 100 MB per clip. Saved only on this device.</small>`;
@@ -297,6 +324,7 @@ async function start(short = false) {
     started: new Date().toISOString(),
     index: 0,
     short: short || state.profile.minutes === 15,
+    minutes: short ? 15 : state.profile.minutes,
     sets: [],
     variants: {},
   };
@@ -353,6 +381,11 @@ async function action(e) {
       window.scrollTo(0, 0);
     }
     if (a === "close") modal.close();
+    if (a === "toggle-demo") {
+      const v = document.querySelector("[data-demo]");
+      if (v.paused) await v.play();
+      else v.pause();
+    }
     if (a === "edit-goal") {
       view = "you";
       render();
@@ -508,6 +541,10 @@ document.addEventListener("submit", async (e) => {
         endurance: +d.get("endurance"),
         strength: +d.get("strength"),
       };
+      if (!Number.isInteger(p.minutes) || p.minutes < 15 || p.minutes > 90) {
+        toast("Choose a session length from 15 to 90 minutes.");
+        return;
+      }
       if (!p.name) {
         toast("Enter your name.");
         return;
@@ -559,12 +596,12 @@ document.addEventListener("submit", async (e) => {
       });
       if (
         pain ||
-        a.sets.filter((x) => x.exercise === ex.id).length >=
-          (a.short ? 1 : ex.sets)
+        a.sets.filter((x) => x.exercise === ex.id).length >= plannedSets(a)
       )
         a.index++;
       await save(n);
-      restUntil = Date.now() + 60000;
+      restUntil =
+        Date.now() + sessionPlan(a.minutes ?? (a.short ? 15 : 35)).rest * 1000;
       if (a.index >= exercises.length) await finish();
       else render();
       if (pain)
@@ -604,6 +641,10 @@ document.addEventListener("submit", async (e) => {
 });
 document.addEventListener("change", async (e) => {
   const input = e.target;
+  if (input.id === "demo-speed") {
+    document.querySelector("[data-demo]").playbackRate = Number(input.value);
+    return;
+  }
   if (input.id === "video-record" || input.id === "video-upload") {
     const file = input.files?.[0];
     if (!file) return;
@@ -672,7 +713,8 @@ function validBackup(d) {
     finite(d.profile.start, 50, 1000) &&
     finite(d.profile.target, 50, 1000) &&
     finite(d.profile.weekly, 1, 6) &&
-    [15, 35].includes(d.profile.minutes) &&
+    Number.isInteger(d.profile.minutes) &&
+    finite(d.profile.minutes, 15, 90) &&
     Array.isArray(d.profile.days) &&
     d.profile.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6) &&
     finite(d.profile.endurance, 5, 300) &&
@@ -711,6 +753,9 @@ function validBackup(d) {
         Number.isInteger(d.active.index) &&
         d.active.index >= 0 &&
         d.active.index < exercises.length &&
+        (d.active.minutes === undefined ||
+          (Number.isInteger(d.active.minutes) &&
+            finite(d.active.minutes, 15, 90))) &&
         Array.isArray(d.active.sets) &&
         d.active.variants &&
         typeof d.active.id === "string"))

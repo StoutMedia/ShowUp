@@ -145,7 +145,7 @@ export function recommendations(s) {
       recent.every((w) => {
         const xs = w.sets.filter((x) => x.exercise === ex.id);
         return (
-          xs.length >= ex.sets &&
+          xs.length >= Math.max(ex.sets, plannedSets(w)) &&
           xs.every((x) => x.reps >= target && x.rir >= 2 && !x.pain)
         );
       }) && new Set(sets.map((x) => x.weight)).size === 1;
@@ -173,4 +173,28 @@ export function recommendations(s) {
       },
     ];
   });
+}
+
+// Time is a budget, not a mandate to increase load or fill every minute.
+export function sessionPlan(minutes = 35) {
+  const m = Math.max(15, Math.min(90, Math.round(Number(minutes) || 35)));
+  const sets = m <= 15 ? 1 : m < 45 ? 2 : 3;
+  const warmup = m <= 20 ? 3 : m < 60 ? 5 : 8,
+    cooldown = m <= 20 ? 3 : m < 60 ? 5 : 7;
+  const strength = Math.min(
+    m - warmup - cooldown,
+    sets === 1 ? 9 : sets === 2 ? 25 : 40,
+  );
+  return {
+    minutes: m,
+    sets,
+    warmup,
+    strength,
+    cooldown,
+    cardio: m - warmup - cooldown - strength,
+    rest: m >= 45 ? 90 : 60,
+  };
+}
+export function plannedSets(session) {
+  return sessionPlan(session.minutes ?? (session.short ? 15 : 35)).sets;
 }

@@ -32,7 +32,7 @@ A Pages URL is not live until Pages is enabled and its deployment finishes. No P
 ## Working features
 
 - First-run setup with editable goals: fat loss + muscle, strength, endurance or consistency. Rob's initial values (315 lb / 230 lb) are form defaults, not fictional weigh-ins.
-- Weekly workout target, preferred days, session length and optional target date.
+- Weekly workout target, preferred days, session length from 15–90 minutes and optional target date.
 - Weekly weigh-ins with energy, recovery, optional waist measurements and notes. Saving the same date updates it without extra XP. Delete entries to correct mistakes.
 - Three-movement general strength template, a shortened session, substitutions before logging, editable load/reps, effort and pain check-ins, rest timer and resumed workouts after reload.
 - Walking/cycling/swimming completion logging.
@@ -44,7 +44,7 @@ A Pages URL is not live until Pages is enabled and its deployment finishes. No P
 
 ## Limits that matter
 
-This is a local-first MVP, not an App Store binary or a cloud service. There is no cross-device sync, login, wearable integration, background health tracking, notifications or AI form analysis. Videos are personal review evidence; the app never fabricates a form score or claims to know a safe load from a clip. Instructional exercise videos and professionally individualized training plans are not included. Exercise text describes general templates; the experience preference does not change the template yet.
+This is a local-first MVP, not an App Store binary or a cloud service. There is no cross-device sync, login, wearable integration, background health tracking, notifications or AI form analysis. Videos are personal review evidence; the app never fabricates a form score or claims to know a safe load from a clip. Professionally individualized training plans are not included. Exercise text describes general templates; the experience preference does not change the template yet.
 
 The 315 → 230 target describes weight change, not a promise of a particular body composition. Strength, waist measurements, nutrition and recovery provide additional context. Target dates are preferences, not guaranteed forecasts. Reported pain stops progression for that movement and directs the user to qualified help.
 
@@ -63,3 +63,11 @@ Browser storage can be cleared or evicted. Export logs regularly and download im
 ## Next production capabilities
 
 Add authenticated cloud storage and per-user authorization before promising sync. For automated video feedback, integrate an exercise-specific validated pose-analysis pipeline with camera setup, quality/confidence gates, low-confidence rejection and explicit user consent before uploading clips. Keep logged load and effort separate from visual observations. Never use a generic text-model response as proof of safe form.
+
+## September 16 update: movement demos and longer sessions
+
+Every strength movement and its alternative now has an original six-second looping MP4 diagram with a poster, native video controls, and half-speed playback. Videos are cached with the app for offline use after a successful first online load. Playback starts on tap, avoiding unexpected motion. Demonstrations show simplified side views; they are not individual form assessments or DAREBEE assets.
+
+Session duration accepts any whole minute from 15 through 90. The plan shows a suggested warm-up, strength/rest, optional easy-cardio and cool-down time budget. A 15-minute session has one set per movement, 16–44 minutes uses two, and 45–90 minutes uses three. Extra time goes to preparation, rest and optional cardio, not automatic load increases. Completing strength sets does not claim that optional cardio was completed; log cardio separately. Active sessions retain the duration chosen at their start even if profile settings change.
+
+Original video source: `scripts/render-demos.py` (Pillow + ffmpeg). All six clips are H.264/yuv420p MP4 with fast-start metadata. Movement references consulted: [ACE seated cable row](https://www.acefitness.org/resources/everyone/exercise-library/48/seated-row/) and [ACE seated chest press](https://www.acefitness.org/resources/everyone/exercise-library/188/seated-chest-press/). Videos are original illustrative diagrams, not copied or endorsed by ACE or DAREBEE.

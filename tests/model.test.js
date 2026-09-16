@@ -93,3 +93,26 @@ test("low recovery suppresses progression", () => {
   ];
   assert.deepEqual(recommendations(s), []);
 });
+
+test("duration budgets from 15 to 90 total correctly without unlimited sets", async () => {
+  const { sessionPlan, plannedSets } = await import("../model.js");
+  for (let m = 15; m <= 90; m++) {
+    const p = sessionPlan(m);
+    assert.equal(p.warmup + p.strength + p.cardio + p.cooldown, m);
+    assert.ok(p.cardio >= 0);
+    assert.ok(p.sets <= 3);
+  }
+  assert.equal(plannedSets({ short: true }), 1);
+  assert.equal(plannedSets({ short: false }), 2);
+  assert.equal(plannedSets({ minutes: 90 }), 3);
+});
+test("long workouts must meet all three sets for progression", () => {
+  const s = base();
+  s.sessions = [
+    { ...row("a"), minutes: 90 },
+    { ...row("b"), minutes: 90 },
+  ];
+  assert.deepEqual(recommendations(s), []);
+  for (const w of s.sessions) w.sets.push({ ...w.sets[0] });
+  assert.equal(recommendations(s)[0].reps, 11);
+});

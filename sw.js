@@ -1,4 +1,4 @@
-const CACHE = "showup-v1.0.0";
+const CACHE = "showup-v1.1.0";
 const FILES = [
   "./",
   "./index.html",
@@ -8,6 +8,9 @@ const FILES = [
   "./db.js",
   "./icon.svg",
   "./manifest.webmanifest",
+  ...["squat", "squat-alt", "row", "row-alt", "press", "press-alt"].flatMap(
+    (key) => [`./assets/demos/${key}.mp4`, `./assets/demos/${key}.png`],
+  ),
 ];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)));
@@ -32,6 +35,10 @@ self.addEventListener("fetch", (e) => {
     new URL(e.request.url).origin !== location.origin
   )
     return;
+  if (e.request.headers.has("range")) {
+    e.respondWith(mediaRange(e.request));
+    return;
+  }
   e.respondWith(
     fetch(e.request)
       .then((r) => {
@@ -54,3 +61,41 @@ self.addEventListener("fetch", (e) => {
       ),
   );
 });
+
+async function mediaRange(request) {
+  const url = request.url;
+  let response = await caches.match(url);
+  if (!response) {
+    response = await fetch(url);
+    if (!response.ok) return response;
+    const c = await caches.open(CACHE);
+    await c.put(url, response.clone());
+  }
+  const data = await response.arrayBuffer(),
+    size = data.byteLength;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(request.headers.get("range") || "");
+  if (!match || (!match[1] && !match[2]))
+    return new Response(data, { headers: response.headers });
+  let start = match[1]
+    ? Number(match[1])
+    : Math.max(0, size - Number(match[2]));
+  let end = match[1]
+    ? match[2]
+      ? Math.min(Number(match[2]), size - 1)
+      : size - 1
+    : size - 1;
+  if (start >= size || end < start)
+    return new Response(null, {
+      status: 416,
+      headers: { "Content-Range": `bytes */${size}` },
+    });
+  return new Response(data.slice(start, end + 1), {
+    status: 206,
+    headers: {
+      "Content-Type": response.headers.get("Content-Type") || "video/mp4",
+      "Content-Range": `bytes ${start}-${end}/${size}`,
+      "Content-Length": String(end - start + 1),
+      "Accept-Ranges": "bytes",
+    },
+  });
+}
