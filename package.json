@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "python3 -m http.server 5173",
-    "test": "node --test tests/model.test.js",
-    "check": "node --check app.js && node --check model.js && node --check db.js && node --check sw.js"
+    "test": "node --test tests/*.test.js",
+    "check": "node --check app.js && node --check model.js && node --check db.js && node --check sw.js && node --check hiit.js"
   }
 }

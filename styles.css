@@ -694,3 +694,43 @@ video {
     scroll-behavior: auto !important;
   }
 }
+
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 48px;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.button-link.primary {
+  border-color: var(--lime);
+  color: #16190b;
+}
+.program-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.program-cell {
+  padding: 10px 2px;
+  min-width: 0;
+}
+.program-cell.selected {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+.program-cell.done {
+  background: var(--lime);
+  color: #111;
+}
+.hiit-feature {
+  border-color: #657b27;
+}
+.hiit-feature h2 {
+  font-size: 3rem;
+}

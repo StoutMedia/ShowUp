@@ -1,10 +1,11 @@
-const CACHE = "showup-v1.1.0";
+const CACHE = "showup-v1.2.0";
 const FILES = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
   "./model.js",
+  "./hiit.js",
   "./db.js",
   "./icon.svg",
   "./manifest.webmanifest",

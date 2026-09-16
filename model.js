@@ -1,3 +1,4 @@
+import { isLoggedSession } from "./hiit.js";
 export const dayKey = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 export const weekKey = (date = new Date()) => {
@@ -62,11 +63,11 @@ export const exercises = [
 ];
 export function weekSessions(s, key = weekKey()) {
   return s.sessions.filter(
-    (x) => weekKey(new Date(x.finished)) === key && x.sets.length > 0,
+    (x) => weekKey(new Date(x.finished)) === key && isLoggedSession(x),
   );
 }
 export function stats(s) {
-  const sessions = s.sessions.filter((x) => x.sets.length > 0);
+  const sessions = s.sessions.filter((x) => isLoggedSession(x));
   const xp = sessions.length * 100 + s.checks.length * 25;
   return {
     xp,

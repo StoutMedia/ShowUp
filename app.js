@@ -1,4 +1,15 @@
 import {
+  HIIT_ID,
+  HIIT_URL,
+  HIIT_LIBRARY,
+  validDay,
+  dayURL,
+  completedDays,
+  nextDay,
+  logProgramDay,
+  isLoggedSession,
+} from "./hiit.js";
+import {
   dayKey,
   weekKey,
   uid,
@@ -13,6 +24,7 @@ import {
   weekSessions,
 } from "./model.js";
 import { openDB, get, put, all, remove } from "./db.js";
+let selectedProgramDay = null;
 let state,
   view = "today",
   videos = [],
@@ -72,7 +84,7 @@ function render() {
     app.innerHTML = `<main class="content onboarding"><div class="brand">SHOW UP.</div><h1>Set your<br><span class="lime">starting point.</span></h1><p class="muted">Your goal. Your schedule. One session at a time.</p><section class="card gap">${profileForm()}</section></main>`;
     return;
   }
-  app.innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand">SHOW UP.</div><nav aria-label="Main navigation">${nav()}</nav><div class="foot">YOUR GOAL.<br>YOUR WORK.<br><br>Saved on this device.<br>No cloud sync.</div></aside><main class="content"><header class="topbar"><div class="mobilebrand brand">SHOW UP.</div><div class="desktopdate eyebrow">${new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div><button class="avatar" data-action="nav" data-view="you" aria-label="Your profile">${esc(state.profile.name[0].toUpperCase())}</button></header>${view === "today" ? today() : view === "progress" ? progress() : view === "workout" ? workout() : you()}</main><nav class="navbottom" aria-label="Mobile navigation">${nav()}</nav></div>`;
+  app.innerHTML = `<div class="shell"><aside class="sidebar"><div class="brand">SHOW UP.</div><nav aria-label="Main navigation">${nav()}</nav><div class="foot">YOUR GOAL.<br>YOUR WORK.<br><br>Saved on this device.<br>No cloud sync.</div></aside><main class="content"><header class="topbar"><div class="mobilebrand brand">SHOW UP.</div><div class="desktopdate eyebrow">${new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</div><button class="avatar" data-action="nav" data-view="you" aria-label="Your profile">${esc(state.profile.name[0].toUpperCase())}</button></header>${view === "today" ? today() : view === "progress" ? progress() : view === "workout" ? workout() : view === "program" ? program() : you()}</main><nav class="navbottom" aria-label="Mobile navigation">${nav()}</nav></div>`;
   updateTimer();
 }
 function profileForm() {
@@ -142,7 +154,7 @@ function weekCard() {
       const d = new Date(monday);
       d.setDate(d.getDate() + i);
       const done = state.sessions.some(
-        (x) => dayKey(new Date(x.finished)) === dayKey(d) && x.sets.length,
+        (x) => dayKey(new Date(x.finished)) === dayKey(d) && isLoggedSession(x),
       );
       return `<div class="day ${done ? "done" : ""} ${state.profile.days.includes(d.getDay()) ? "planned" : ""} ${dayKey(d) === dayKey() ? "today" : ""}">${d.toLocaleDateString(undefined, { weekday: "short" }).slice(0, 1)}<span>${done ? "✓" : d.getDate()}</span></div>`;
     },
@@ -161,7 +173,7 @@ function recoveryCard() {
   return `<section class="card"><span class="badge">RECOVERY CHECK</span><h3 class="gap">Give yourself some room.</h3><p class="muted gap-sm">Your latest check-in reports low energy or fatigue. Consider a shorter session or rest today. Stop any movement that causes pain.</p><div class="gap">${button("Choose the shorter session", "short", "ghost wide")}</div></section>`;
 }
 function today() {
-  return `<div class="eyebrow">Your next chapter</div><h1 class="gap-sm">${esc(state.profile.name)}.<br>You've got this.</h1><div class="layout"><div class="stack">${goalCard()}<section class="card mission"><span class="number">01</span><div><span class="eyebrow">Today's mission</span><h2>Build your<br>base.</h2><p>${state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes} min budget · Full body · 3 movements</p><p class="gap-sm">${planDescription(state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes)}</p></div><div class="gap">${button(state.active ? "RESUME WORKOUT" : "START WORKOUT", "start", "primary wide")}<div class="gap-sm">${button("Just get me started · 15 min", "short", "ghost wide")}</div></div></section>${button("Log walking, cycling or swimming", "cardio", "ghost wide")}</div><div class="stack">${weekCard()}${recoveryCard()}<section class="card"><div class="eyebrow">Weekly check-in</div><h2 class="gap-sm">Check in.<br>Move forward.</h2><p class="muted gap-sm">${state.checks.length ? `Last weigh-in: ${dateLabel(state.checks.at(-1).date)}` : "Your first weigh-in starts the trend."}</p><div class="gap">${button("LOG WEIGH-IN", "checkin", "primary wide")}</div></section>${recommendationCards()}<p class="muted"><small>Starter workouts are general templates. Adjust exercises to your equipment and comfort.</small></p></div></div>`;
+  return `<div class="eyebrow">Your next chapter</div><h1 class="gap-sm">${esc(state.profile.name)}.<br>You've got this.</h1><div class="layout"><div class="stack">${goalCard()}${programCard()}<section class="card mission"><span class="number">01</span><div><span class="eyebrow">Today's mission</span><h2>Build your<br>base.</h2><p>${state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes} min budget · Full body · 3 movements</p><p class="gap-sm">${planDescription(state.active ? (state.active.minutes ?? (state.active.short ? 15 : 35)) : state.profile.minutes)}</p></div><div class="gap">${button(state.active ? "RESUME WORKOUT" : "START WORKOUT", "start", "primary wide")}<div class="gap-sm">${button("Just get me started · 15 min", "short", "ghost wide")}</div></div></section>${button("Log walking, cycling or swimming", "cardio", "ghost wide")}</div><div class="stack">${weekCard()}${recoveryCard()}<section class="card"><div class="eyebrow">Weekly check-in</div><h2 class="gap-sm">Check in.<br>Move forward.</h2><p class="muted gap-sm">${state.checks.length ? `Last weigh-in: ${dateLabel(state.checks.at(-1).date)}` : "Your first weigh-in starts the trend."}</p><div class="gap">${button("LOG WEIGH-IN", "checkin", "primary wide")}</div></section>${recommendationCards()}<p class="muted"><small>Starter workouts are general templates. Adjust exercises to your equipment and comfort.</small></p></div></div>`;
 }
 function recommendationCards() {
   return recommendations(state)
@@ -228,6 +240,61 @@ function demo(ex, alt) {
     1,
   )}</div><small>Original simplified animation · tap play to repeat the movement. This shows the exercise, not an analysis of your form.</small></div>`;
 }
+function programCard() {
+  const count = completedDays(state).size,
+    day = nextDay(state);
+  return `<section class="card hiit-feature"><span class="eyebrow">YOUR PROGRAM · DAREBEE</span><h2 class="gap-sm">30 days<br>of HIIT.</h2><p class="gap-sm">${count} of 30 days completed</p><div class="bar"><span style="width:${(count / 30) * 100}%"></span></div>${button(count === 30 ? "REVIEW YOUR PROGRAM" : `OPEN DAY ${day}`, "open-program", "primary wide")}<p class="muted gap-sm">Follow the official workouts, then save your completion here.</p></section>`;
+}
+function program() {
+  const day = selectedProgramDay ?? nextDay(state),
+    done = completedDays(state),
+    entry = state.sessions.find(
+      (s) => s.programId === HIIT_ID && s.programDay === day,
+    );
+  const clipSession = `darebee-hiit-day-${day}`;
+  return `<div class="eyebrow">DAREBEE · Program companion</div><h1 class="gap-sm">30 days<br>of HIIT.</h1><p class="muted gap">${done.size} of 30 days completed. Progress at your own pace.</p><div class="layout"><div class="stack"><section class="card"><div class="row"><h2>Day ${day}</h2><span class="badge">${done.has(day) ? "COMPLETED" : "READY WHEN YOU ARE"}</span></div><p class="muted gap">Open the official Day ${day} card for the exercises, timing, level options and demonstrations. Return here to log what you completed.</p><a class="button-link primary wide gap" href="${dayURL(day)}" target="_blank" rel="noopener noreferrer">OPEN OFFICIAL DAY ${day} ↗</a><a class="button-link ghost wide gap-sm" href="${HIIT_LIBRARY}" target="_blank" rel="noopener noreferrer">WATCH DAREBEE EXERCISE VIDEOS ↗</a><p class="notice gap">Use the duration on the official card. Your 15–90 minute gym setting does not extend the HIIT workout.</p>${entry ? `<p class="gap">Level ${entry.level} · ${entry.minutes} minutes · ${esc(entry.effort)} effort</p><p class="muted gap-sm">${esc(entry.notes)}</p>` : ""}<div class="gap">${button(entry ? "EDIT COMPLETION" : "I COMPLETED THIS DAY", "log-program", "primary wide")}</div>${entry ? `<div class="gap-sm">${button("Undo completion", "undo-program", "textbutton")}</div>` : ""}<div class="row gap">${button("Previous", "program-day", "ghost", `data-day="${day - 1}" ${day === 1 ? "disabled" : ""}`)}${button("Next day", "program-day", "ghost", `data-day="${day + 1}" ${day === 30 ? "disabled" : ""}`)}</div></section><section class="card"><h3>Your 30-day progress</h3><div class="program-grid gap">${Array.from(
+    { length: 30 },
+    (_, i) => i + 1,
+  )
+    .map((d) =>
+      button(
+        `${done.has(d) ? "✓ " : ""}${d}`,
+        "program-day",
+        `program-cell ${d === day ? "selected" : ""} ${done.has(d) ? "done" : ""}`,
+        `data-day="${d}" aria-label="Day ${d}${done.has(d) ? ", completed" : ""}" aria-pressed="${d === day}"`,
+      ),
+    )
+    .join(
+      "",
+    )}</div><p class="muted gap-sm">Choose any day to view or update it. Days advance when you choose, not when the calendar changes.</p></section></div><div class="stack"><section class="card"><h3>Your Day ${day} video</h3><p class="muted gap-sm">Record your own set for later review. These clips stay on this device.</p>${videoInputs(clipSession, `hiit-day-${day}`)}<small>Personal recordings only. No automatic form analysis.</small></section>${videoList(videos.filter((v) => v.session === clipSession))}<section class="card"><h3>Official source</h3><p class="muted gap-sm">Workouts and demonstrations open on DAREBEE and require an internet connection. Your completion logs remain available offline.</p><p class="gap-sm"><a href="${HIIT_URL}" target="_blank" rel="noopener noreferrer">30 Days of HIIT by DAREBEE</a></p><p class="muted gap-sm">SHOW UP is an independent companion, not affiliated with DAREBEE.</p></section></div></div>`;
+}
+function programLogForm() {
+  const day = selectedProgramDay ?? nextDay(state),
+    entry = state.sessions.find(
+      (s) => s.programId === HIIT_ID && s.programDay === day,
+    );
+  showDialog(
+    `<h2>Log Day ${day}</h2><form id="program-log" data-day="${day}" class="fields gap">${select(
+      "hiit-level",
+      "Level you completed",
+      [
+        [1, "Level I"],
+        [2, "Level II"],
+        [3, "Level III"],
+      ],
+      entry?.level ?? 1,
+    )}${num("hiit-minutes", "Actual minutes completed", entry?.minutes ?? "", 1, 90)}${select(
+      "hiit-effort",
+      "How did it feel?",
+      [
+        ["easy", "Easy"],
+        ["moderate", "Moderate"],
+        ["hard", "Hard"],
+      ],
+      entry?.effort ?? "moderate",
+    )}<div><label for="hiit-notes">Notes / modifications (optional)</label><textarea id="hiit-notes" name="hiit-notes" maxlength="1000">${esc(entry?.notes ?? "")}</textarea></div><p class="muted">Save only after completing the workout. Editing this entry will not award extra XP.</p><button class="primary">${entry ? "SAVE CHANGES" : "SAVE COMPLETION"}</button></form>`,
+  );
+}
 function workout() {
   const a = state.active;
   if (!a)
@@ -241,7 +308,7 @@ function workout() {
       .at(-1),
     reps = state.targets[ex.id]?.reps ?? ex.reps,
     variant = a.variants[ex.id] ?? ex.name;
-  return `<div class="row wrap"><span class="eyebrow">Movement ${a.index + 1} of ${exercises.length}</span>${button("Save & exit", "save-exit", "ghost")}</div><h1 class="exercisehead">${esc(variant)}</h1><p class="muted">${esc(a.variants[ex.id] ? {squat:"Bodyweight · sturdy chair",row:"Resistance band · secure anchor",press:"Bodyweight · wall"}[ex.id] : ex.equipment)} · ${target} sets × ${reps} reps</p><p class="muted gap-sm">${planDescription(a.minutes ?? (a.short ? 15 : 35))}</p><div class="layout"><section class="card">${demo(ex, a.variants[ex.id])}<div class="row gap"><span class="badge">YOUR NEXT SET</span><span class="muted timer" id="rest"></span></div><div class="sets">${Array.from({ length: target }, (_, i) => `<span class="set ${i < sets.length ? "done" : i === sets.length ? "current" : ""}">${i < sets.length ? "✓" : i + 1}</span>`).join("")}</div><p class="notice">${esc(variant === ex.name ? ex.cue : "Use a comfortable range and controlled movement. Ask a trainer to check your setup for this alternative.")}</p><form id="set" class="fields gap"><div class="two">${num("load", "Weight (lb; 0 = bodyweight)", sets.at(-1)?.weight ?? last?.weight ?? "", 0, 1500, 0.5)}${num("reps", "Reps completed", reps, 1, 100)}</div>${select(
+  return `<div class="row wrap"><span class="eyebrow">Movement ${a.index + 1} of ${exercises.length}</span>${button("Save & exit", "save-exit", "ghost")}</div><h1 class="exercisehead">${esc(variant)}</h1><p class="muted">${esc(a.variants[ex.id] ? { squat: "Bodyweight · sturdy chair", row: "Resistance band · secure anchor", press: "Bodyweight · wall" }[ex.id] : ex.equipment)} · ${target} sets × ${reps} reps</p><p class="muted gap-sm">${planDescription(a.minutes ?? (a.short ? 15 : 35))}</p><div class="layout"><section class="card">${demo(ex, a.variants[ex.id])}<div class="row gap"><span class="badge">YOUR NEXT SET</span><span class="muted timer" id="rest"></span></div><div class="sets">${Array.from({ length: target }, (_, i) => `<span class="set ${i < sets.length ? "done" : i === sets.length ? "current" : ""}">${i < sets.length ? "✓" : i + 1}</span>`).join("")}</div><p class="notice">${esc(variant === ex.name ? ex.cue : "Use a comfortable range and controlled movement. Ask a trainer to check your setup for this alternative.")}</p><form id="set" class="fields gap"><div class="two">${num("load", "Weight (lb; 0 = bodyweight)", sets.at(-1)?.weight ?? last?.weight ?? "", 0, 1500, 0.5)}${num("reps", "Reps completed", reps, 1, 100)}</div>${select(
     "rir",
     "How many more reps could you do?",
     [
@@ -269,7 +336,7 @@ function videoList(vs) {
     .map((v) => {
       const url = URL.createObjectURL(v.blob);
       urls.push(url);
-      return `<section class="card videocard"><div class="row"><h3>${esc(exercises.find((x) => x.id === v.exercise)?.name ?? "Training video")}</h3><small>${dateLabel(dayKey(new Date(v.created)))}</small></div><video controls playsinline preload="metadata" src="${url}"></video><small>${esc(v.name)} · ${(v.blob.size / 1048576).toFixed(1)} MB</small><p>${esc(v.notes || "No review notes yet.")}</p><div class="videoactions">${button("Add review note", "video-note", "ghost", `data-id="${esc(v.id)}"`)}<a href="${url}" download="${esc(v.name)}">Download</a>${button("Delete", "video-delete", "ghost danger", `data-id="${esc(v.id)}"`)}</div></section>`;
+      return `<section class="card videocard"><div class="row"><h3>${esc(exercises.find((x) => x.id === v.exercise)?.name ?? (String(v.exercise).startsWith("hiit-day-") ? "HIIT program · Day " + String(v.exercise).slice(9) : "Training video"))}</h3><small>${dateLabel(dayKey(new Date(v.created)))}</small></div><video controls playsinline preload="metadata" src="${url}"></video><small>${esc(v.name)} · ${(v.blob.size / 1048576).toFixed(1)} MB</small><p>${esc(v.notes || "No review notes yet.")}</p><div class="videoactions">${button("Add review note", "video-note", "ghost", `data-id="${esc(v.id)}"`)}<a href="${url}" download="${esc(v.name)}">Download</a>${button("Delete", "video-delete", "ghost danger", `data-id="${esc(v.id)}"`)}</div></section>`;
     })
     .join("");
 }
@@ -303,7 +370,7 @@ function progress() {
           .reverse()
           .map(
             (s) =>
-              `<li><div class="row"><strong>${esc(s.title)}</strong><small>${dateLabel(dayKey(new Date(s.finished)))}</small></div><p class="muted gap-sm">${s.cardio ? `${s.minutes} minutes · ${s.effort} effort` : `${s.sets.length} sets · ${s.status === "partial" ? "Shortened session" : "Session complete"}`}</p>${button("View log", "session", "textbutton", `data-id="${esc(s.id)}"`)}</li>`,
+              `<li><div class="row"><strong>${esc(s.title)}</strong><small>${dateLabel(dayKey(new Date(s.finished)))}</small></div><p class="muted gap-sm">${s.cardio || s.programId === HIIT_ID ? `${s.minutes} minutes · ${esc(s.effort)} effort` : `${s.sets.length} sets · ${s.status === "partial" ? "Shortened session" : "Session complete"}`}</p>${button("View log", "session", "textbutton", `data-id="${esc(s.id)}"`)}</li>`,
           )
           .join("")}</ul>`
       : '<p class="empty">Your first session belongs here.<br>Start whenever you’re ready.</p>'
@@ -381,6 +448,38 @@ async function action(e) {
       window.scrollTo(0, 0);
     }
     if (a === "close") modal.close();
+    if (a === "open-program") {
+      selectedProgramDay = nextDay(state);
+      view = "program";
+      render();
+    }
+    if (a === "program-day") {
+      const day = Number(b.dataset.day);
+      if (validDay(day)) {
+        selectedProgramDay = day;
+        view = "program";
+        render();
+      }
+    }
+    if (a === "log-program") programLogForm();
+    if (a === "undo-program") {
+      showDialog(
+        `<h2>Remove this completion?</h2><p class="gap muted">Day ${selectedProgramDay} will be available again. Session totals and XP will update. Your saved videos stay available.</p><div class="gap">${button("REMOVE COMPLETION", "confirm-undo-program", "danger", `data-day="${selectedProgramDay}"`)}</div>`,
+      );
+    }
+    if (a === "confirm-undo-program") {
+      const day = Number(b.dataset.day);
+      if (validDay(day)) {
+        const n = structuredClone(state);
+        n.sessions = n.sessions.filter(
+          (s) => !(s.programId === HIIT_ID && s.programDay === day),
+        );
+        await save(n);
+        modal.close();
+        render();
+        toast("Completion removed; videos kept.");
+      }
+    }
     if (a === "toggle-demo") {
       const v = document.querySelector("[data-demo]");
       if (v.paused) await v.play();
@@ -481,7 +580,7 @@ async function action(e) {
     if (a === "session") {
       const s = state.sessions.find((x) => x.id === b.dataset.id);
       showDialog(
-        `<h2>${esc(s.title)}</h2><p class="muted gap-sm">${new Date(s.finished).toLocaleString()}</p><ul class="list gap">${s.sets.map((x) => `<li>${esc(x.variant || exercises.find((ex) => ex.id === x.exercise)?.name || s.title)}<br><strong>${s.cardio ? `${s.minutes} minutes` : `${x.weight} lb × ${x.reps} reps`}</strong>${s.cardio ? "" : ` · ${x.rir} reps left${x.pain ? " · Pain reported" : ""}`}</li>`).join("")}</ul>`,
+        `<h2>${esc(s.title)}</h2><p class="muted gap-sm">${new Date(s.finished).toLocaleString()}</p><ul class="list gap">${s.programId === HIIT_ID ? `<li>Day ${s.programDay} · Level ${s.level}<br>${s.minutes} minutes · ${esc(s.effort)} effort<p class="gap-sm">${esc(s.notes)}</p></li>` : s.sets.map((x) => `<li>${esc(x.variant || exercises.find((ex) => ex.id === x.exercise)?.name || s.title)}<br><strong>${s.cardio ? `${s.minutes} minutes` : `${x.weight} lb × ${x.reps} reps`}</strong>${s.cardio ? "" : ` · ${x.rir} reps left${x.pain ? " · Pain reported" : ""}`}</li>`).join("")}</ul>`,
       );
     }
     if (a === "cardio")
@@ -522,6 +621,22 @@ document.addEventListener("submit", async (e) => {
   try {
     busy = true;
     const n = structuredClone(state);
+    if (f.id === "program-log") {
+      const day = Number(f.dataset.day);
+      const existed = completedDays(state).has(day);
+      await save(
+        logProgramDay(state, {
+          day,
+          level: Number(d.get("hiit-level")),
+          minutes: Number(d.get("hiit-minutes")),
+          effort: d.get("hiit-effort"),
+          notes: d.get("hiit-notes").trim(),
+        }),
+      );
+      modal.close();
+      render();
+      toast(existed ? "Program log updated" : "Day completed · +100 XP");
+    }
     if (f.id === "profile") {
       const days = d.getAll("days").map(Number);
       if (!days.length) {
@@ -732,6 +847,14 @@ function validBackup(d) {
       (s) =>
         typeof s.id === "string" &&
         typeof s.title === "string" &&
+        (s.programId === undefined ||
+          (s.programId === HIIT_ID &&
+            validDay(s.programDay) &&
+            [1, 2, 3].includes(s.level) &&
+            Number.isInteger(s.minutes) &&
+            finite(s.minutes, 1, 90) &&
+            ["easy", "moderate", "hard"].includes(s.effort) &&
+            typeof s.notes === "string")) &&
         Number.isFinite(Date.parse(s.finished)) &&
         Array.isArray(s.sets) &&
         s.sets.every(
